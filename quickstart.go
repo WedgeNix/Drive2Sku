@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -13,8 +12,6 @@ import (
 
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
-	"google.golang.org/api/drive/v3"
 )
 
 // getClient uses a Context and Config to retrieve a Token
@@ -90,39 +87,39 @@ func saveToken(file string, token *oauth2.Token) {
 }
 
 func main() {
-	ctx := context.Background()
+	getFile()
+	// ctx := context.Background()
 
-	b, err := ioutil.ReadFile("client_secret.json")
-	if err != nil {
-		log.Fatalf("Unable to read client secret file: %v", err)
-	}
+	// b, err := ioutil.ReadFile("client_secret.json")
+	// if err != nil {
+	// 	log.Fatalf("Unable to read client secret file: %v", err)
+	// }
 
-	// If modifying these scopes, delete your previously saved credentials
-	// at ~/.credentials/drive-go-quickstart.json
-	config, err := google.ConfigFromJSON(b, drive.DriveMetadataReadonlyScope)
-	if err != nil {
-		log.Fatalf("Unable to parse client secret file to config: %v", err)
-	}
-	client := getClient(ctx, config)
+	// // If modifying these scopes, delete your previously saved credentials
+	// // at ~/.credentials/drive-go-quickstart.json
+	// config, err := google.ConfigFromJSON(b, drive.DriveMetadataReadonlyScope)
+	// if err != nil {
+	// 	log.Fatalf("Unable to parse client secret file to config: %v", err)
+	// }
+	// client := getClient(ctx, config)
 
-	srv, err := drive.New(client)
-	if err != nil {
-		log.Fatalf("Unable to retrieve drive Client %v", err)
-	}
+	// srv, err := drive.New(client)
+	// if err != nil {
+	// 	log.Fatalf("Unable to retrieve drive Client %v", err)
+	// }
 
-	r, err := srv.Files.List().PageSize(10).
-		Fields("nextPageToken, files(id, name)").Do()
-	if err != nil {
-		log.Fatalf("Unable to retrieve files: %v", err)
-	}
+	// r, err := srv.Files.List().PageSize(10).Fields("nextPageToken, files(id, name)").Do()
+	// if err != nil {
+	// 	log.Fatalf("Unable to retrieve files: %v", err)
+	// }
 
-	fmt.Println("Files:")
-	if len(r.Files) > 0 {
-		for _, i := range r.Files {
-			fmt.Printf("%s (%s)\n", i.Name, i.Id)
-		}
-	} else {
-		fmt.Println("No files found.")
-	}
+	// fmt.Println("Files:")
+	// if len(r.Files) > 0 {
+	// 	for _, f := range r.Files {
+	// 		fmt.Printf("%s (%s)\n", f.Name, f.Id)
+	// 	}
+	// } else {
+	// 	fmt.Println("No files found.")
+	// }
 
 }
