@@ -110,19 +110,43 @@ func main() {
 		log.Fatalf("Unable to retrieve drive Client %v", err)
 	}
 
-	r, err := srv.Files.List().PageSize(10).
-		Fields("nextPageToken, files(id, name)").Do()
+	// We don't want to use Fields() because it strips away the
+	// other field data in the files; we do a query and specify
+	// that we are looking for files out of our entire list of
+	// the drive's files that share the same parents (folder) with
+	// each other by the desired folder's name
+	// ats := "0BzaYO4E7QW9VN2ZuTjVBc1Zydzg"
+	// misc := "0BzaYO4E7QW9VcmY2STR4YW9TY1U"
+	// pv := "0BzaYO4E7QW9VNG5GejI1LUExaGM"
+	fl, err := srv.Files.List().PageSize(1).Q("'0BzaYO4E7QW9VNG5GejI1LUExaGM' in parents and trashed = false").Do()
 	if err != nil {
 		log.Fatalf("Unable to retrieve files: %v", err)
 	}
 
-	fmt.Println("Files:")
-	if len(r.Files) > 0 {
-		for _, i := range r.Files {
-			fmt.Printf("%s (%s)\n", i.Name, i.Id)
+	fmt.Println()
+	fmt.Println("-------------")
+	fmt.Println("----BEGIN----")
+	fmt.Println("-------------")
+	fmt.Println()
+
+	if len(fl.Files) > 0 {
+		for _, f := range fl.Files {
+			fmt.Printf("%s (%s)\n", f.Name, f.Id)
+
+			r, err := srv.Files.Export(f.Id, "application/vnd.google-apps.script+json").Download()
+			if err != nil {
+				log.Fatalf("Unable to download file: %v", err)
+			}
+
+			fmt.Println(r)
 		}
 	} else {
 		fmt.Println("No files found.")
 	}
 
+	fmt.Println()
+	fmt.Println("-------------")
+	fmt.Println("-----END-----")
+	fmt.Println("-------------")
+	fmt.Println()
 }
