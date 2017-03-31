@@ -133,7 +133,8 @@ func main() {
 		for _, f := range fl.Files {
 			fmt.Printf("%s (%s)\n", f.Name, f.Id)
 
-			r, err := srv.Files.Export(f.Id, "application/vnd.google-apps.script+json").Download()
+			// r, err := srv.Files.Export(f.Id, "application/vnd.google-apps.script+json").Download()
+			r, err := srv.Files.Get(f.Id).Download()
 			if err != nil {
 				log.Fatalf("Unable to download file: %v", err)
 			}
