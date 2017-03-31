@@ -100,6 +100,8 @@ func (d2s *Drive2Sku) readDrive() {
 // to SKUVault via its REST api
 //
 func write2Sku(r *http.Response) {
+	// b := []byte
+	// r.Body.Read()
 	// the actual POST url listed
 	url := "https://app.skuvault.com/api/inventory/"
 
