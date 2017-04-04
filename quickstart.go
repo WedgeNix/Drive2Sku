@@ -74,6 +74,7 @@ func NewDrive2Sku() *Drive2Sku {
 func (d2s *Drive2Sku) readDrive() {
 	// all Pending Vendor parent id files not in the trash
 	fl, err := d2s.service.Files.List().PageSize(1).Q("'0BzaYO4E7QW9VNG5GejI1LUExaGM' in parents and trashed = false").Do()
+	// I would like to make vendor id more dynamic, so if we need to change to id we can
 	if err != nil {
 		log.Fatalf("Unable to retrieve files: %v", err)
 	}
@@ -94,6 +95,13 @@ func (d2s *Drive2Sku) readDrive() {
 	} else {
 		fmt.Println("No files found.")
 	}
+}
+
+// getSkuCredentials gets the tokens needed for SKU vault
+// api calls.
+//
+func getSkuCredentials() {
+
 }
 
 // write2Sku writes the intercepted json files out
