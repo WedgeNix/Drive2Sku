@@ -105,7 +105,7 @@ func getSkuCredentials() {
 
 	// A rough draft of the code
 	// Needs error handaling
-	// Also needs to save the JSON it receives into C:\Users\TheAccountant\.credentials
+	// Also needs to save the JSON it receives into \.credentials
 
 	url := "https://app.skuvault.com/api/getTokens"
 	//  Asking for email for SKU Vault account
@@ -140,6 +140,7 @@ func getSkuCredentials() {
 	defer res.Body.Close()
 	body, _ := ioutil.ReadAll(res.Body)
 
+	// Just for testing, needs to save tokens to \.credentials or some where else we can get to them
 	fmt.Println("My Tokens", string(body))
 
 }
