@@ -10,6 +10,8 @@ import (
 	"os/user"
 	"path/filepath"
 
+	"google.golang.org/api/drive/v3"
+
 	"strings"
 
 	"golang.org/x/net/context"
@@ -19,7 +21,7 @@ import (
 // getClientAndSkuTokens uses a Context and Config to retrieve a Token
 // then generate a Client. It returns the generated Client.
 //
-func getClientAndSkuTokens(ctx context.Context, config *oauth2.Config) (*http.Client, *SkuConn) {
+func getClientAndSkuTokens(ctx context.Context, config *oauth2.Config) (*drive.Service, *SkuConn) {
 	cacheDriveFile, cacheSkuFile, err := tokenCacheFiles()
 	if err != nil {
 		log.Fatalf("Unable to get path to cached credential files. %v", err)
@@ -33,13 +35,18 @@ func getClientAndSkuTokens(ctx context.Context, config *oauth2.Config) (*http.Cl
 	}
 
 	// skuvault token
-	conn, err := tokenFromFile(cacheSkuFile)
+	sku, err := tokenFromFile(cacheSkuFile)
 	if err != nil {
-		conn = getTokenFromWeb()
-		saveToken(cacheSkuFile, conn.tokens)
+		sku = getTokenFromWeb()
+		saveToken(cacheSkuFile, sku.t)
 	}
 
-	return config.Client(ctx, tok), conn
+	drv, err = drive.New(config.Client(ctx, tok))
+	if err != nil {
+		log.Fatalf("Unable to retrieve drive Service: %v", err)
+	}
+
+	return drv, sku
 }
 
 // getOTokenFromWeb uses Config to request a Token.

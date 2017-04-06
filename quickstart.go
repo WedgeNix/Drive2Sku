@@ -12,11 +12,15 @@ import (
 	"google.golang.org/api/drive/v3"
 )
 
-// Drive2Sku is the main instance data for the engine
-// it holds onto the needed service for the
-// reading portion of the core program
+// drv is the Google Drive service
+// it references the account after connecting
 //
-var service *drive.Service
+var drv *drive.Service
+
+// sku is the SKUVault connection tokens and client
+// it allows use of tenant and user tokens for POST calls
+//
+var sku *SkuConn
 
 // main is the entry point into the server program
 // first sets up and reads from the drive
@@ -29,7 +33,6 @@ var service *drive.Service
 func main() {
 	// for {
 	drive2Sku()
-	readDrive()
 
 	// TODO: uncomment line below when the program is
 	// | | | ready to run on own
@@ -42,8 +45,6 @@ func main() {
 // it sets up the dialog between this server and the drive folder
 //
 func drive2Sku() {
-	ctx := context.Background()
-
 	b, err := ioutil.ReadFile("client_secret.json")
 	if err != nil {
 		log.Fatalf("Unable to read client secret file: %v", err)
@@ -55,18 +56,10 @@ func drive2Sku() {
 	if err != nil {
 		log.Fatalf("Unable to parse client secret file to config: %v", err)
 	}
-	client, skuConn := getClientAndSkuTokens(ctx, config)
 
-	service, err = drive.New(client)
-	if err != nil {
-		log.Fatalf("Unable to retrieve drive Client: %v", err)
-	}
-
-	/*err = */
-	write2Sku(skuConn)
-	// if err != nil {
-	// 	log.Fatalf("Unable to write to SKUVault: %v", err)
-	// }
+	drv, sku = getClientAndSkuTokens(context.Background(), config)
+	readDrive()
+	write2Sku()
 }
 
 // readDrive actually reads the drive account's
@@ -75,7 +68,7 @@ func drive2Sku() {
 //
 func readDrive() {
 	// all Pending Vendor parent id files not in the trash
-	fl, err := service.Files.List().Q("'0BzaYO4E7QW9VNG5GejI1LUExaGM' in parents and trashed = false").Do()
+	fl, err := drv.Files.List().Q("'0BzaYO4E7QW9VNG5GejI1LUExaGM' in parents and trashed = false").Do()
 	// I would like to make vendor id more dynamic, so if we need to change to id we can
 	if err != nil {
 		log.Fatalf("Unable to retrieve files: %v", err)
@@ -100,15 +93,17 @@ func readDrive() {
 }
 
 // SkuConn contains access tokens for POST calls
+// t represents the POST tenant and user tokens
+// c represents the POST http client
 //
 type SkuConn struct {
-	tokens SkuTokens
-	client http.Client
+	t SkuTokens
+	c http.Client
 }
 
 // write2Sku writes the intercepted json files out
 // to SKUVault via its REST api
 //
-func write2Sku(conn *SkuConn) {
-	fmt.Printf("Tenant:%s User:%s\n", conn.tokens.TenantToken, conn.tokens.UserToken)
+func write2Sku() {
+	fmt.Printf("Tenant:%s User:%s\n", sku.t.TenantToken, sku.t.UserToken)
 }
