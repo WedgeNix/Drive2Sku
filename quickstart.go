@@ -98,52 +98,7 @@ func (d2s *Drive2Sku) readDrive() {
 	}
 }
 
-// getSkuCredentials gets the tokens needed for SKU vault
-// api calls.
-//
-func getSkuCredentials() {
-
-	// A rough draft of the code
-	// Needs error handaling
-	// Also needs to save the JSON it receives into \.credentials
-
-	url := "https://app.skuvault.com/api/getTokens"
-	//  Asking for email for SKU Vault account
-	fmt.Printf("Enter your SKU Valut Email address.\n")
-	var usrEmail string
-	if _, err := fmt.Scan(&usrEmail); err != nil {
-		log.Fatalf("Unable to read email %v", err)
-	}
-
-	//  Asking for password for SKU Vault account
-	fmt.Printf("Enter your SKU Valut Password.\n")
-	var pass string
-	if _, err := fmt.Scan(&pass); err != nil {
-		log.Fatalf("Unable to read password %v", err)
-	}
-
-	var j = `{"email":"` + usrEmail + `","password":"` + pass + `"}`
-	payload := strings.NewReader(j)
-
-	req, err := http.NewRequest("POST", url, payload)
-
-	req.Header.Add("accept", "application/json")
-	req.Header.Add("content-type", "application/json")
-
-	client := &http.Client{}
-	res, err := client.Do(req)
-
-	if err != nil {
-		panic(err)
-	}
-
-	defer res.Body.Close()
-	body, _ := ioutil.ReadAll(res.Body)
-
-	// Just for testing, needs to save tokens to \.credentials or some where else we can get to them
-	fmt.Println("My Tokens", string(body))
-
-}
+/
 
 // write2Sku writes the intercepted json files out
 // to SKUVault via its REST api
