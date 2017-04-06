@@ -71,7 +71,7 @@ func drive2Sku() {
 //
 func readDrive() {
 	// all Pending Vendor parent id files not in the trash
-	fl, err := drv.Files.List().Q("'0BzaYO4E7QW9VNG5GejI1LUExaGM' in parents and trashed = false").Do()
+	fl, err := drv.Files.List().PageSize(1).Q("'0BzaYO4E7QW9VNG5GejI1LUExaGM' in parents and trashed = false").Do()
 	// I would like to make vendor id more dynamic, so if we need to change to id we can
 	if err != nil {
 		log.Fatalf("Unable to retrieve files: %v", err)
@@ -81,19 +81,12 @@ func readDrive() {
 		for _, f := range fl.Files {
 			fmt.Printf("%s (%s)\n", f.Name, f.Id)
 
-			// grabs http request for one of the json files
-			// res, err := drv.Files.Get(f.Id).Download()
-			// if err != nil {
-			// 	log.Fatalf("Unable to download file: %v", err)
-			// }
-
 			// goroutine forwards json (request) to sku database
-			// go write2Sku(res)
+			write2Sku(*f)
 		}
 	} else {
 		fmt.Println("No files found.")
 	}
-	write2Sku(nil)
 }
 
 // SkuConn contains access tokens for POST calls
@@ -118,45 +111,27 @@ type SkuData struct {
 // write2Sku writes the intercepted json files out
 // to SKUVault via its REST api
 //
-func write2Sku(res *http.Response) {
-	fmt.Printf("Tenant:%s User:%s\n", sku.t.TenantToken, sku.t.UserToken)
-
-	const jStream = `
-		{"Famous":{"0ABC123X":{"Sku":"0ABC123X","Quantity":6,"Location":"Upland","WarehouseId":"W2"},"0ABC123Y":{"Sku":"0ABC123Y","Quantity":7,"Location":"Upland","WarehouseId":"W2"}}}
-	`
+func write2Sku(f drive.File) {
+	// grabs http request for one of the json files
+	res, err := drv.Files.Get(f.Id).Download()
+	if err != nil {
+		log.Fatalf("Unable to download file: %v", err)
+	}
 
 	vsd := map[string]map[string]SkuData{}
-	json.Unmarshal([]byte(jStream), &vsd)
+	json.NewDecoder(res.Body).Decode(&vsd)
 	for k, v := range vsd {
 		fmt.Printf("%s:\n", k)
 		for ik, iv := range v {
 			fmt.Printf("\t%s:\n", ik)
 			fmt.Printf("\t\t\"Sku\":\"%s\"\n", iv.Sku)
-			fmt.Printf("\t\t\"Quantity\":\"%d\"\n", iv.Quantity)
+			fmt.Printf("\t\t\"Quantity\":%d\n", iv.Quantity)
 			fmt.Printf("\t\t\"Location\":\"%s\"\n", iv.Location)
 			fmt.Printf("\t\t\"WarehouseId\":\"%s\"\n", iv.WarehouseID)
 		}
 	}
 
-	// body := json.NewDecoder(res.Body)
-	// body := json.NewDecoder(strings.NewReader(jStream))
-	// for {
-	// 	tok, err := body.Token()
-	// 	if err == io.EOF {
-	// 		break
-	// 	}
-	// 	if err != nil {
-	// 		log.Fatalf("Unable to tokenize vendor json: %v", err)
-	// 	}
-
-	// 	fmt.Printf("%T: %v", tok, tok)
-
-	// 	if body.More() {
-	// 		fmt.Printf(" (more)")
-	// 	}
-
-	// 	fmt.Println()
-	// }
+	fmt.Printf("Tenant:%s User:%s\n", sku.t.TenantToken, sku.t.UserToken)
 
 	// skuRequest("setQuantities")
 }
