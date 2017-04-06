@@ -10,30 +10,42 @@ import (
 	"os/user"
 	"path/filepath"
 
+	"strings"
+
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 )
 
-// getClient uses a Context and Config to retrieve a Token
+// getClientAndSkuTokens uses a Context and Config to retrieve a Token
 // then generate a Client. It returns the generated Client.
 //
-func getClient(ctx context.Context, config *oauth2.Config) *http.Client {
-	cacheFile, err := tokenCacheFile()
+func getClientAndSkuTokens(ctx context.Context, config *oauth2.Config) (*http.Client, *SkuConn) {
+	cacheDriveFile, cacheSkuFile, err := tokenCacheFiles()
 	if err != nil {
-		log.Fatalf("Unable to get path to cached credential file. %v", err)
+		log.Fatalf("Unable to get path to cached credential files. %v", err)
 	}
-	tok, err := tokenFromFile(cacheFile)
+
+	// drive token
+	tok, err := oTokenFromFile(cacheDriveFile)
 	if err != nil {
-		tok = getTokenFromWeb(config)
-		saveToken(cacheFile, tok)
+		tok = getOTokenFromWeb(config)
+		saveOToken(cacheDriveFile, tok)
 	}
-	return config.Client(ctx, tok)
+
+	// skuvault token
+	conn, err := tokenFromFile(cacheSkuFile)
+	if err != nil {
+		conn = getTokenFromWeb()
+		saveToken(cacheSkuFile, conn.tokens)
+	}
+
+	return config.Client(ctx, tok), conn
 }
 
-// getTokenFromWeb uses Config to request a Token.
+// getOTokenFromWeb uses Config to request a Token.
 // It returns the retrieved Token.
 //
-func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
+func getOTokenFromWeb(config *oauth2.Config) *oauth2.Token {
 	authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
 	fmt.Printf("Go to the following link in your browser then type the "+
 		"authorization code: \n%v\n", authURL)
@@ -50,24 +62,26 @@ func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
 	return tok
 }
 
-// tokenCacheFile generates credential file path/filename.
+// tokenCacheFiles generates credential file path/filename.
 // It returns the generated credential path/filename.
 //
-func tokenCacheFile() (string, error) {
+func tokenCacheFiles() (string, string, error) {
 	usr, err := user.Current()
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	tokenCacheDir := filepath.Join(usr.HomeDir, ".credentials")
 	os.MkdirAll(tokenCacheDir, 0700)
 	return filepath.Join(tokenCacheDir,
-		url.QueryEscape("drive-go-quickstart.json")), err
+			url.QueryEscape("drive-go-quickstart.json")),
+		filepath.Join(tokenCacheDir,
+			url.QueryEscape("skuvault-toks.json")), err
 }
 
-// tokenFromFile retrieves a Token from a given file path.
+// oTokenFromFile retrieves a Token from a given file path.
 // It returns the retrieved Token and any read error encountered.
 //
-func tokenFromFile(file string) (*oauth2.Token, error) {
+func oTokenFromFile(file string) (*oauth2.Token, error) {
 	f, err := os.Open(file)
 	if err != nil {
 		return nil, err
@@ -78,11 +92,31 @@ func tokenFromFile(file string) (*oauth2.Token, error) {
 	return t, err
 }
 
-// saveToken uses a file path to create a file and store the
+// SkuTokens holds
+type SkuTokens struct {
+	TenantToken string
+	UserToken   string
+}
+
+// tokenFromFile retrieves a Token from a given file path.
+// It returns the retrieved Token and any read error encountered.
+//
+func tokenFromFile(file string) (*SkuConn, error) {
+	f, err := os.Open(file)
+	if err != nil {
+		return nil, err
+	}
+	t := &SkuTokens{}
+	err = json.NewDecoder(f).Decode(t)
+	defer f.Close()
+	return &SkuConn{*t, http.Client{}}, err
+}
+
+// saveOToken uses a file path to create a file and store the
 // token in it.
 //
-func saveToken(file string, token *oauth2.Token) {
-	fmt.Printf("Saving credential file to: %s\n", file)
+func saveOToken(file string, token *oauth2.Token) {
+	fmt.Printf("Saving Drive credential file to: %s\n", file)
 	f, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		log.Fatalf("Unable to cache oauth token: %v", err)
@@ -91,50 +125,89 @@ func saveToken(file string, token *oauth2.Token) {
 	json.NewEncoder(f).Encode(token)
 }
 
+// saveToken uses a file path to create a file and store the
+// token in it.
+//
+func saveToken(file string, token SkuTokens) {
+	fmt.Printf("Saving SkuVault credential file to: %s\n", file)
+	f, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		log.Fatalf("Unable to cache sku tokens: %v", err)
+	}
+	defer f.Close()
+	json.NewEncoder(f).Encode(token)
+}
 
-/ getSkuCredentials gets the tokens needed for SKU vault
+// getSkuCredentials gets the tokens needed for SKU vault
 // api calls.
 //
-func getSkuCredentials() {
-
-	// A rough draft of the code
-	// Needs error handaling
-	// Also needs to save the JSON it receives into \.credentials
-
-	url := "https://app.skuvault.com/api/getTokens"
+func getTokenFromWeb() *SkuConn {
 	//  Asking for email for SKU Vault account
-	fmt.Printf("Enter your SKU Valut Email address.\n")
-	var usrEmail string
-	if _, err := fmt.Scan(&usrEmail); err != nil {
-		log.Fatalf("Unable to read email %v", err)
-	}
+	// fmt.Printf("SKU Vault email and password: ")
+	// fmt.Printf("Enter your SKU Valut Email address.\n")
+	// var usrEmail string
+	// var pass string
+	// _, err := fmt.Scanf("%s %s\n", &usrEmail, &pass)
+	// if err != nil {
+	// 	log.Fatalf("Unable to read email or password. %v", err)
+	// }
 
 	//  Asking for password for SKU Vault account
-	fmt.Printf("Enter your SKU Valut Password.\n")
-	var pass string
-	if _, err := fmt.Scan(&pass); err != nil {
-		log.Fatalf("Unable to read password %v", err)
+	// fmt.Printf("Enter your SKU Valut Password.\n")
+	// if _, err := fmt.Scan(&pass); err != nil {
+	// 	log.Fatalf("Unable to read password %v", err)
+	// }
+
+	type Login struct {
+		Email    string
+		Password string
 	}
 
-	var j = `{"email":"` + usrEmail + `","password":"` + pass + `"}`
-	payload := strings.NewReader(j)
+	// getting SKUVault account login JSON file path
+	usr, err := user.Current()
+	if err != nil {
+		log.Fatalf("Unable to set as user (OS): %v", err)
+	}
+	tokenCacheDir := filepath.Join(usr.HomeDir, ".credentials")
+	os.MkdirAll(tokenCacheDir, 0700)
 
-	req, err := http.NewRequest("POST", url, payload)
+	// getting SKUVault account login file
+	f, err := os.Open(filepath.Join(tokenCacheDir, url.QueryEscape("skuvault-acc.json")))
+	if err != nil {
+		log.Fatalf("Unable to open SKUVault account file: %v", err)
+	}
+	defer f.Close()
 
+	l := Login{}
+	err = json.NewDecoder(f).Decode(&l)
+	if err != nil {
+		log.Fatalf("Unable to decode skuvault-acc.json: %v", err)
+	}
+
+	marsh, err := json.Marshal(l)
+
+	// get official POST request from SKUVault
+	req, err := http.NewRequest("POST", "https://app.skuvault.com/api/getTokens", strings.NewReader(string(marsh)))
+	if err != nil {
+		log.Fatalf("Unable to obtain SKUVault request: %v", err)
+	}
 	req.Header.Add("accept", "application/json")
 	req.Header.Add("content-type", "application/json")
 
+	// http client based on request initialized
 	client := &http.Client{}
 	res, err := client.Do(req)
-
 	if err != nil {
-		panic(err)
+		log.Fatalf("Unable to get SKUVault response: %v", err)
+	}
+	defer res.Body.Close()
+
+	// grab the SKUVault account POST tokens
+	toks := &SkuTokens{}
+	err = json.NewDecoder(res.Body).Decode(toks)
+	if err != nil {
+		log.Fatalf("Unable to decode SKUVault tokens: %v", err)
 	}
 
-	defer res.Body.Close()
-	body, _ := ioutil.ReadAll(res.Body)
-
-	// Just for testing, needs to save tokens to \.credentials or some where else we can get to them
-	fmt.Println("My Tokens", string(body))
-
+	return &SkuConn{*toks, *client}
 }
