@@ -13,6 +13,8 @@ import (
 
 	"google.golang.org/api/drive/v3"
 
+	"time"
+
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 )
@@ -228,4 +230,22 @@ func struct2JSON(v interface{}) *strings.Reader {
 
 	// return reader of stringified JSON bytes
 	return strings.NewReader(string(b))
+}
+
+func weekdaysOperations() {
+	weekly := time.Tick(7 * 24 * time.Hour)
+	// throttle := time.Tick(1 * time.Minute)
+	// rddrv := time.Tick(15 * time.Minute)
+
+	for {
+	wknd: // resets once the weekend starts
+		select {
+		case <-weekly:
+			weekend := time.After(5 * 24 * time.Hour)
+			select {
+			case <-weekend:
+				break wknd
+			}
+		}
+	}
 }

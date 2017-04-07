@@ -9,20 +9,28 @@ import (
 
 	"encoding/json"
 
+	"time"
+
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/drive/v3"
 )
 
-// drv is the Google Drive service
-// it references the account after connecting
-//
-var drv *drive.Service
+const (
+	pendingVendors = 20
+)
 
-// sku is the SKUVault connection tokens and client
-// it allows use of tenant and user tokens for POST calls
-//
-var sku *SkuConn
+var (
+	// drv is the Google Drive service
+	// it references the account after connecting
+	//
+	drv *drive.Service
+
+	// sku is the SKUVault connection tokens and client
+	// it allows use of tenant and user tokens for POST calls
+	//
+	sku *SkuConn
+)
 
 // main is the entry point into the server program
 // first sets up and reads from the drive
@@ -33,8 +41,23 @@ var sku *SkuConn
 // in a smart and practical manner
 //
 func main() {
+	initDriveAndVault()
+
+	readDriveChannel := time.Tick(15 * time.Minute)
+	fileChannelBuffer := make(chan drive.File, 20)
+	writeVaultChannel := time.Tick(1 * time.Minute)
+
+	for {
+		select {
+		case <-readDriveChannel:
+			readDrive()
+		case <-writeVaultChannel:
+			writeVault()
+		}
+	}
+
 	// for {
-	drive2Sku()
+	// drive2Sku()
 
 	// TODO: uncomment line below when the program is
 	// | | | ready to run on own
@@ -43,10 +66,17 @@ func main() {
 	// }
 }
 
-// drive2Sku creates an instance of the engine's collective data
+func readDrive() {
+	// initially handle 10 vendors concurrently
+	fch := make(chan drive.File, 10)
+	readPendingVendors(fch)
+	write2SkuVault(fch)
+}
+
+// init creates an instance of the engine's collective data
 // it sets up the dialog between this server and the drive folder
 //
-func drive2Sku() {
+func initDriveAndVault() {
 	b, err := ioutil.ReadFile("client_secret.json")
 	if err != nil {
 		log.Fatalf("Unable to read client secret file: %v", err)
@@ -61,28 +91,25 @@ func drive2Sku() {
 
 	// obtain our Google Drive and SKUVault handles
 	drv, sku = getClientAndSkuTokens(context.Background(), config)
-
-	readDrive()
 }
 
-// readDrive actually reads the drive account's
+// readPendingVendors actually reads the drive account's
 // pending vendors folder and grabs any and all
 // files, downloads them, and deletes them
 //
-func readDrive() {
+func readPendingVendors(fch chan drive.File) {
 	// all Pending Vendor parent id files not in the trash
-	fl, err := drv.Files.List().PageSize(1).Q("'0BzaYO4E7QW9VNG5GejI1LUExaGM' in parents and trashed = false").Do()
-	// I would like to make vendor id more dynamic, so if we need to change to id we can
+	fls, err := drv.Files.List().Q("'0BzaYO4E7QW9VNG5GejI1LUExaGM' in parents and trashed = false").Do()
 	if err != nil {
 		log.Fatalf("Unable to retrieve files: %v", err)
 	}
 
-	if len(fl.Files) > 0 {
-		for _, f := range fl.Files {
-			fmt.Printf("%s (%s)\n", f.Name, f.Id)
+	if len(fls.Files) > 0 {
+		for _, f := range fls.Files {
+			fmt.Printf("[[[ Processing %s (%s) ]]]\n", f.Name, f.Id)
 
-			// goroutine forwards json (request) to sku database
-			write2Sku(*f)
+			// pass file handle into channel
+			fch <- *f
 		}
 	} else {
 		fmt.Println("No files found.")
@@ -117,18 +144,21 @@ type Payload struct {
 	UserToken   string
 }
 
-// write2Sku writes the intercepted json files out
+// write2SkuVault writes the intercepted json files out
 // to SKUVault via its REST api
 //
-func write2Sku(f drive.File) {
+func write2SkuVault(fch chan drive.File) {
 	// grabs http request for one of the json files
-	res, err := drv.Files.Get(f.Id).Download()
+	res, err := drv.Files.Get((<-fch).Id).Download()
 	if err != nil {
 		log.Fatalf("Unable to download file: %v", err)
 	}
 
+	//
+	// payloads := make([]Payload, 0, 10)
+
 	// 100-item capacity payload
-	pyld := Payload{make([]Item, 0, 100), sku.t.TenantToken, sku.t.UserToken}
+	// pyld := Payload{make([]Item, 0, 100), sku.t.TenantToken, sku.t.UserToken}
 
 	// the entire JSON file structure
 	vsd := map[string]map[string]Item{}
@@ -140,32 +170,45 @@ func write2Sku(f drive.File) {
 		for ik, iv := range v {
 			fmt.Printf("\t%s:\n", ik)
 
-			// payload is full
-			if len(pyld.Items) == cap(pyld.Items) {
-				// send payload
-				sku.Request("setQuantities", &pyld)
+			// payload buffer is full
+			// if len(payloads) == cap(payloads) {
+			// 	// send payload
+			// }
 
-				// empty out payload items
-				pyld.Items = make([]Item, 0, 100)
-			}
+			// // payload is full
+			// if len(pyld.Items) == cap(pyld.Items) {
 
-			pyld.Items = append(pyld.Items, iv)
+			// 	payloads = append(payloads, pyld)
 
-			// fmt.Printf("\t\t\"LocationCode\":\"%s\"\n", iv.LocationCode)
-			// fmt.Printf("\t\t\"Quantity\":%d\n", iv.Quantity)
-			// fmt.Printf("\t\t\"Sku\":\"%s\"\n", iv.Sku)
-			// fmt.Printf("\t\t\"WarehouseId\":\"%d\"\n", iv.WarehouseID)
+			// 	// empty out payload items
+			// 	pyld.Items = make([]Item, 0, 100)
+			// }
+
+			// add item to payload
+			// pyld.Items = append(pyld.Items, iv)
+
+			fmt.Printf("\t\t\"LocationCode\":\"%s\"\n", iv.LocationCode)
+			fmt.Printf("\t\t\"Quantity\":%d\n", iv.Quantity)
+			fmt.Printf("\t\t\"Sku\":\"%s\"\n", iv.Sku)
+			fmt.Printf("\t\t\"WarehouseId\":\"%d\"\n", iv.WarehouseID)
 		}
 	}
 
 	fmt.Printf("Tenant:%s User:%s\n", sku.t.TenantToken, sku.t.UserToken)
 }
 
+func sendPayloads(pylds *[]Payload) {
+	// iterate through all 10 payloads
+	for _, p := range *pylds {
+		go sku.Request("setQuantities", &p)
+	}
+}
+
 // Request sends a POST request using a SKU connection
 // it attempts to send a payload
 //
-func (sc *SkuConn) Request(fn string, p *Payload) {
-	req, err := http.NewRequest("POST", "https://app.skuvault.com/api/"+fn, struct2JSON(*p))
+func (sc *SkuConn) Request(fn string, pyld *Payload) {
+	req, err := http.NewRequest("POST", "https://app.skuvault.com/api/"+fn, struct2JSON(*pyld))
 	if err != nil {
 		log.Fatalf("Unable to obtain SKUVault request: %v", err)
 	}
