@@ -12,8 +12,6 @@ import (
 
 	"google.golang.org/api/drive/v3"
 
-	"strings"
-
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 )
@@ -185,16 +183,14 @@ func getTokenFromWeb() *SkuConn {
 	}
 	defer f.Close()
 
-	l := Login{}
-	err = json.NewDecoder(f).Decode(&l)
+	lgn := Login{}
+	err = json.NewDecoder(f).Decode(&lgn)
 	if err != nil {
 		log.Fatalf("Unable to decode skuvault-acc.json: %v", err)
 	}
 
-	marsh, err := json.Marshal(l)
-
 	// get official POST request from SKUVault
-	req, err := http.NewRequest("POST", "https://app.skuvault.com/api/getTokens", strings.NewReader(string(marsh)))
+	req, err := http.NewRequest("POST", "https://app.skuvault.com/api/getTokens", struct2JSON(lgn))
 	if err != nil {
 		log.Fatalf("Unable to obtain SKUVault request: %v", err)
 	}

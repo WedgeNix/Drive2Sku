@@ -9,6 +9,8 @@ import (
 
 	"encoding/json"
 
+	"strings"
+
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/drive/v3"
@@ -98,14 +100,23 @@ type SkuConn struct {
 	c http.Client
 }
 
-// SkuData represents the inner, important information for each sku object
+// Item represents the inner, important information for each sku object
 // this exists in the JSON structure
 //
-type SkuData struct {
-	Sku         string
-	Quantity    int
-	Location    string
-	WarehouseID string
+type Item struct {
+	LocationCode string
+	Quantity     int
+	Sku          string
+	WarehouseID  int
+}
+
+// Payload represents the final payload structure sent off
+// to SKUVault, given at most 100 objects
+//
+type Payload struct {
+	Items       []Item
+	TenantToken string
+	UserToken   string
 }
 
 // write2Sku writes the intercepted json files out
@@ -118,37 +129,69 @@ func write2Sku(f drive.File) {
 		log.Fatalf("Unable to download file: %v", err)
 	}
 
-	vsd := map[string]map[string]SkuData{}
+	// 100-item capacity payload
+	pyld := Payload{make([]Item, 0, 100), sku.t.TenantToken, sku.t.UserToken}
+
+	// the entire JSON file structure
+	vsd := map[string]map[string]Item{}
 	json.NewDecoder(res.Body).Decode(&vsd)
 	for k, v := range vsd {
 		fmt.Printf("%s:\n", k)
+
+		// this is one payload item
 		for ik, iv := range v {
 			fmt.Printf("\t%s:\n", ik)
-			fmt.Printf("\t\t\"Sku\":\"%s\"\n", iv.Sku)
-			fmt.Printf("\t\t\"Quantity\":%d\n", iv.Quantity)
-			fmt.Printf("\t\t\"Location\":\"%s\"\n", iv.Location)
-			fmt.Printf("\t\t\"WarehouseId\":\"%s\"\n", iv.WarehouseID)
+
+			// payload is full
+			if len(pyld.Items) == cap(pyld.Items) {
+				// send payload
+				sku.Request("setQuantities", &pyld)
+
+				// empty out payload items
+				pyld.Items = make([]Item, 0, 100)
+			}
+
+			pyld.Items = append(pyld.Items, iv)
+
+			// fmt.Printf("\t\t\"LocationCode\":\"%s\"\n", iv.LocationCode)
+			// fmt.Printf("\t\t\"Quantity\":%d\n", iv.Quantity)
+			// fmt.Printf("\t\t\"Sku\":\"%s\"\n", iv.Sku)
+			// fmt.Printf("\t\t\"WarehouseId\":\"%d\"\n", iv.WarehouseID)
 		}
 	}
 
 	fmt.Printf("Tenant:%s User:%s\n", sku.t.TenantToken, sku.t.UserToken)
-
-	// skuRequest("setQuantities")
 }
 
-// func skuRequest(fn string) {
-// 	req, err := http.NewRequest("POST", "https://app.skuvault.com/api/"+fn)
-// 	if err != nil {
-// 		log.Fatalf("Unable to obtain SKUVault request: %v", err)
-// 	}
-// 	req.Header.Add("accept", "application/json")
-// 	req.Header.Add("content-type", "application/json")
+// struct2JSON converts a data structure
+// in type format into a JSON-reader
+//
+func struct2JSON(v interface{}) *strings.Reader {
+	// convert interface to JSON bytes
+	b, err := json.Marshal(v)
+	if err != nil {
+		log.Fatalf("Unable to convert interface to reader: %v", err)
+	}
 
-// 	// http client based on request initialized
-// 	client := &http.Client{}
-// 	res, err := client.Do(req)
-// 	if err != nil {
-// 		log.Fatalf("Unable to get SKUVault response: %v", err)
-// 	}
-// 	defer res.Body.Close()
-// }
+	// return reader of stringified JSON bytes
+	return strings.NewReader(string(b))
+}
+
+// Request sends a POST request using a SKU connection
+// it attempts to send a payload
+//
+func (sc *SkuConn) Request(fn string, p *Payload) {
+	req, err := http.NewRequest("POST", "https://app.skuvault.com/api/"+fn, struct2JSON(*p))
+	if err != nil {
+		log.Fatalf("Unable to obtain SKUVault request: %v", err)
+	}
+	req.Header.Add("accept", "application/json")
+	req.Header.Add("content-type", "application/json")
+
+	// http client based on request initialized
+	res, err := sc.c.Do(req)
+	if err != nil {
+		log.Fatalf("Unable to get SKUVault response: %v", err)
+	}
+	defer res.Body.Close()
+}
