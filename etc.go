@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"strings"
 
 	"google.golang.org/api/drive/v3"
 
@@ -213,4 +214,18 @@ func getTokenFromWeb() *SkuConn {
 	}
 
 	return &SkuConn{*toks, *client}
+}
+
+// struct2JSON converts a data structure
+// in type format into a JSON-reader
+//
+func struct2JSON(v interface{}) *strings.Reader {
+	// convert interface to JSON bytes
+	b, err := json.Marshal(v)
+	if err != nil {
+		log.Fatalf("Unable to convert interface to reader: %v", err)
+	}
+
+	// return reader of stringified JSON bytes
+	return strings.NewReader(string(b))
 }

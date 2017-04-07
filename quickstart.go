@@ -9,8 +9,6 @@ import (
 
 	"encoding/json"
 
-	"strings"
-
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/drive/v3"
@@ -161,20 +159,6 @@ func write2Sku(f drive.File) {
 	}
 
 	fmt.Printf("Tenant:%s User:%s\n", sku.t.TenantToken, sku.t.UserToken)
-}
-
-// struct2JSON converts a data structure
-// in type format into a JSON-reader
-//
-func struct2JSON(v interface{}) *strings.Reader {
-	// convert interface to JSON bytes
-	b, err := json.Marshal(v)
-	if err != nil {
-		log.Fatalf("Unable to convert interface to reader: %v", err)
-	}
-
-	// return reader of stringified JSON bytes
-	return strings.NewReader(string(b))
 }
 
 // Request sends a POST request using a SKU connection
