@@ -245,3 +245,14 @@ func printResponse(res *http.Response) {
 	}
 	fmt.Println(string(b))
 }
+
+func responseStatus(res *http.Response) string {
+	body := ResponseBody{}
+	json.NewDecoder(res.Body).Decode(&body)
+	defer res.Body.Close()
+	return strings.Join(body.Errors[0].ErrorMessages[:], `, `)
+}
+
+func echo(s string) {
+	fmt.Printf("[[[ %72s ]]]\n", s)
+}

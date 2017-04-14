@@ -129,11 +129,11 @@ func readDrive() {
 	defer wg.Done()
 
 	// all Pending Vendor parent id files not in the trash
-	fls, err := drv.Files.List().PageSize(1).Q(`'0BzaYO4E7QW9VeVFVUGZrMUVLSWs' in parents and trashed = false`).Do()
+	fls, err := drv.Files.List().PageSize(2).Q(`'0BzaYO4E7QW9VeVFVUGZrMUVLSWs' in parents and trashed = false`).Do()
 	if err == nil {
 		if len(fls.Files) > 0 {
 			for _, f := range fls.Files {
-				fmt.Printf("[[[ Processing %s (%s) ]]]\n", f.Name, f.Id)
+				echo(fmt.Sprintf("Processing %s (%s)", f.Name, f.Id))
 
 				wg.Add(1)
 				go chunkToPayloads(*f)
@@ -231,13 +231,37 @@ func writeVault(pl Payload) {
 	// }
 	// fmt.Println(string(b))
 
-	fmt.Printf("[[[ Uploading (%d/%d) ]]]", len(pl.Items), cap(pl.Items))
 	res, err := vaultRequest(`inventory/setItemQuantities`, struct2JSON(pl))
 	if err != nil {
-		log.Fatalf(`Unable to set quantities in SKUVault: %v`, err)
+		log.Fatalf(`Unable to set item quantities in SKUVault: %v`, err)
 	}
 	defer res.Body.Close()
 
-	fmt.Printf(" (Status: %d)\n", res.StatusCode)
+	var errExt string
+	if res.StatusCode < 400 {
+		errExt = ""
+	} else {
+		errExt = fmt.Sprintf("; %s", responseStatus(res))
+	}
+	echo(fmt.Sprintf("Uploaded payload (%d/%d)%s", len(pl.Items), cap(pl.Items), errExt))
 	// fmt.Println(`[[[ Write to SKUVault: END ]]]`)
+}
+
+// ErrorBody matches the structure of
+// the SKUVault response body for an error
+//
+type ErrorBody struct {
+	Sku           string
+	Code          int
+	LocationCode  string
+	WarehouseID   int
+	ErrorMessages []string
+}
+
+// ResponseBody matches the structure of
+// the SKUVault general response body
+//
+type ResponseBody struct {
+	Status string
+	Errors []ErrorBody
 }
