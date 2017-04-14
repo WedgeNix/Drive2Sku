@@ -90,7 +90,7 @@ func main() {
 		case <-throttleCh:
 			go writeVault(<-plBufCh)
 		case <-endCh:
-			fmt.Printf("[[[ Finished relaying vendor JSONs ]]]\n")
+			echo("Finished relaying vendor JSONs")
 			return
 		}
 	}

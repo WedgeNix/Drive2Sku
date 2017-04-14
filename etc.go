@@ -254,5 +254,15 @@ func responseStatus(res *http.Response) string {
 }
 
 func echo(s string) {
-	fmt.Printf("[[[ %72s ]]]\n", s)
+	W := 120
+	L := `[[[`
+	R := `]]]`
+	LC := len(L)
+	RC := len(R)
+	MP := len(s)
+	IP := W - LC - RC
+	LP := IP/2 - MP/2
+	RP := IP - MP - LP
+
+	fmt.Printf("%s%*s%s%*s%s\n", L, LP, ``, s, RP, ``, R)
 }
