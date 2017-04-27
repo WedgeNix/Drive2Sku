@@ -63,7 +63,20 @@ var (
 	//
 	plBufCh = make(chan Payload, 10)
 
+	// wg is a wait group that acts like an atomic reference
+	// counter but for goroutines and waits for them to all finish
+	//
 	wg sync.WaitGroup
+
+	// fCh is a file channel that holds all potential
+	// files eventually to be deleted
+	//
+	fCh = make(chan drive.File)
+
+	// delFCh is a channel that accepts a
+	// number for files to delete in the near future
+	//
+	delFCh = make(chan int)
 )
 
 // main is the entry point into the server program
@@ -89,6 +102,8 @@ func main() {
 		select {
 		case <-throttleCh:
 			go writeVault(<-plBufCh)
+		case n := <-delFCh:
+			deleteFiles(n)
 		case <-endCh:
 			echo("Finished relaying vendor JSONs")
 			return
@@ -96,6 +111,10 @@ func main() {
 	}
 }
 
+// proctor is a blocking check to see when
+// all goroutines have been released from
+// the wait group
+//
 func proctor() {
 	wg.Wait()
 	endCh <- true
@@ -129,9 +148,10 @@ func readDrive() {
 	defer wg.Done()
 
 	// all Pending Vendor parent id files not in the trash
-	fls, err := drv.Files.List().PageSize(2).Q(`'0BzaYO4E7QW9VeVFVUGZrMUVLSWs' in parents and trashed = false`).Do()
+	fls, err := drv.Files.List(). /*.PageSize(2)*/ Q(`'0BzaYO4E7QW9VeVFVUGZrMUVLSWs' in parents and trashed = false`).Do()
 	if err == nil {
-		if len(fls.Files) > 0 {
+		files := len(fls.Files)
+		if files > 0 {
 			for _, f := range fls.Files {
 				echo(fmt.Sprintf("Processing %s (%s)", f.Name, f.Id))
 
@@ -141,8 +161,9 @@ func readDrive() {
 		} else {
 			fmt.Println("No files found.")
 		}
-	}
 
+		delFCh <- files
+	}
 }
 
 // chunkToPayloads downloads a file
@@ -207,14 +228,30 @@ func chunkToPayloads(f drive.File) {
 		}
 	}
 
-	// we are done reading; trash it
-	err = drv.Files.Delete(f.Id).Do()
-	if err != nil {
-		log.Fatalf("Unable to delete file: %v", err)
-	}
+	fCh <- f
 
 	// fmt.Printf("Tenant:%s User:%s\n", toks.TenantToken, toks.UserToken)
 	// fmt.Println(`[[[ Chunk to payloads: END ]]]`)
+}
+
+// deleteFile takes in a drive file
+// and actually deletes it from the
+// Drive account
+//
+func deleteFiles(n int) {
+	// we wait for the channel
+	// to empty n-times
+	for i := 0; i < n; i++ {
+		f := <-fCh
+		echo(fmt.Sprintf(`Deleting file "%s" (%s)`, f.Name, f.Id))
+		// we are done fully reading; trash it
+		err := drv.Files.Delete(f.Id).Do()
+		if err != nil {
+			log.Fatalf("Unable to delete file: %v", err)
+		} else {
+			echo(fmt.Sprintf(`"%s" (%s) deleted!`, f.Name, f.Id))
+		}
+	}
 }
 
 // writeVault writes the intercepted json files out
