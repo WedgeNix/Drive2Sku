@@ -150,8 +150,8 @@ func readDrive() {
 	// all Pending Vendor parent id files not in the trash
 	fls, err := drv.Files.List(). /*.PageSize(2)*/ Q(`'0BzaYO4E7QW9VeVFVUGZrMUVLSWs' in parents and trashed = false`).Do()
 	if err == nil {
-		files := len(fls.Files)
-		if files > 0 {
+		n := len(fls.Files)
+		if n > 0 {
 			for _, f := range fls.Files {
 				echo(fmt.Sprintf("Processing %s (%s)", f.Name, f.Id))
 
@@ -162,7 +162,7 @@ func readDrive() {
 			fmt.Println("No files found.")
 		}
 
-		delFCh <- files
+		delFCh <- n
 	}
 }
 
