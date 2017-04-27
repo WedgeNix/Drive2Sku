@@ -150,7 +150,7 @@ func readDrive() {
 				echo(fmt.Sprintf("Processing %s (%s)", f.Name, f.Id))
 
 				// one file at a time
-				/*wg.Add(1)
+				/*wg.Add(1) // this in unsafe at the moment; file deletion relies on sequence
 				go*/chunkToPayloads(*f)
 			}
 		} else {
