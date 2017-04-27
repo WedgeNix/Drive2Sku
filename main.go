@@ -68,15 +68,10 @@ var (
 	//
 	wg sync.WaitGroup
 
-	// fCh is a file channel that holds all potential
-	// files eventually to be deleted
+	// delFCh is a file channel that holds a potential
+	// file eventually to be deleted
 	//
-	fCh = make(chan drive.File)
-
-	// delFCh is a channel that accepts a
-	// number for files to delete in the near future
-	//
-	delFCh = make(chan int)
+	delFCh = make(chan drive.File)
 )
 
 // main is the entry point into the server program
@@ -102,8 +97,6 @@ func main() {
 		select {
 		case <-throttleCh:
 			go writeVault(<-plBufCh)
-		case n := <-delFCh:
-			deleteFiles(n)
 		case <-endCh:
 			echo("Finished relaying vendor JSONs")
 			return
@@ -150,19 +143,19 @@ func readDrive() {
 	// all Pending Vendor parent id files not in the trash
 	fls, err := drv.Files.List(). /*.PageSize(2)*/ Q(`'0BzaYO4E7QW9VeVFVUGZrMUVLSWs' in parents and trashed = false`).Do()
 	if err == nil {
+		// store the count of files to be processed
 		n := len(fls.Files)
 		if n > 0 {
 			for _, f := range fls.Files {
 				echo(fmt.Sprintf("Processing %s (%s)", f.Name, f.Id))
 
-				wg.Add(1)
-				go chunkToPayloads(*f)
+				// one file at a time
+				/*wg.Add(1)
+				go*/chunkToPayloads(*f)
 			}
 		} else {
 			fmt.Println("No files found.")
 		}
-
-		delFCh <- n
 	}
 }
 
@@ -170,9 +163,7 @@ func readDrive() {
 // fitting it into 100-chuck payloads
 //
 func chunkToPayloads(f drive.File) {
-	defer wg.Done()
-
-	// fmt.Println(`[[[ Chunk to payloads: BEGIN ]]]`)
+	// defer wg.Done()
 
 	// grabs http request for one of the json files
 	res, err := drv.Files.Get(f.Id).Download()
@@ -201,13 +192,11 @@ func chunkToPayloads(f drive.File) {
 
 			// payload is full
 			if len(pl.Items) == cap(pl.Items) {
-				// fmt.Println(`[[[ Full payload: BEGIN ]]]`)
 				// forward payload into buffered channel
 				wg.Add(1)
 				plBufCh <- pl
 				// reset payload
 				pl = Payload{make([]Item, 0, plCap), pl.TenantToken, pl.UserToken}
-				// fmt.Println(`[[[ Full payload: END ]]]`)
 			}
 
 			// add item to payload
@@ -221,14 +210,15 @@ func chunkToPayloads(f drive.File) {
 
 		// payload is partially full
 		if len(pl.Items) != 0 {
-			// fmt.Println(`[[[ Full payload: BEGIN ]]]`)
 			// forward payload into buffered channel
 			wg.Add(1)
 			plBufCh <- pl
 		}
 	}
 
-	fCh <- f
+	// the file is finished chunking into payloads;
+	// send it forward for deletion
+	delFCh <- f
 
 	// fmt.Printf("Tenant:%s User:%s\n", toks.TenantToken, toks.UserToken)
 	// fmt.Println(`[[[ Chunk to payloads: END ]]]`)
@@ -238,19 +228,12 @@ func chunkToPayloads(f drive.File) {
 // and actually deletes it from the
 // Drive account
 //
-func deleteFiles(n int) {
-	// we wait for the channel
-	// to empty n-times
-	for i := 0; i < n; i++ {
-		f := <-fCh
-		echo(fmt.Sprintf(`Deleting file "%s" (%s)`, f.Name, f.Id))
-		// we are done fully reading; trash it
-		err := drv.Files.Delete(f.Id).Do()
-		if err != nil {
-			log.Fatalf("Unable to delete file: %v", err)
-		} else {
-			echo(fmt.Sprintf(`"%s" (%s) deleted!`, f.Name, f.Id))
-		}
+func deleteFile(f drive.File) {
+	echo(fmt.Sprintf(`Deleting file "%s" (%s)`, f.Name, f.Id))
+
+	err := drv.Files.Delete(f.Id).Do()
+	if err != nil {
+		log.Fatalf("Unable to delete file: %v", err)
 	}
 }
 
@@ -259,14 +242,6 @@ func deleteFiles(n int) {
 //
 func writeVault(pl Payload) {
 	defer wg.Done()
-
-	// fmt.Println(`[[[ Write to SKUVault: BEGIN ]]]`)
-
-	// b, er := ioutil.ReadAll(struct2JSON(pl))
-	// if er != nil {
-	// 	log.Fatalf(`Unable to read payload: %v`, er)
-	// }
-	// fmt.Println(string(b))
 
 	res, err := vaultRequest(`inventory/setItemQuantities`, struct2JSON(pl))
 	if err != nil {
@@ -280,8 +255,21 @@ func writeVault(pl Payload) {
 	} else {
 		errExt = fmt.Sprintf("; %s", responseStatus(res))
 	}
-	echo(fmt.Sprintf("Uploaded payload (%d/%d)%s", len(pl.Items), cap(pl.Items), errExt))
-	// fmt.Println(`[[[ Write to SKUVault: END ]]]`)
+
+	echo(fmt.Sprintf(`Uploaded payload (%d/%d)%s`, len(pl.Items), cap(pl.Items), errExt))
+
+	// attempt to delete a file if finished
+	// chunking into payloads;
+	// since we are dealing with one file at a time
+	// it is implied that after a payload write it
+	// is safe to delete said file since it is clearly
+	// sent out. The payloads back to back are not
+	// different files
+	select {
+	case f := <-delFCh: // delete if ready
+		deleteFile(f)
+	default: // ignore if not ready
+	}
 }
 
 // ErrorBody matches the structure of
