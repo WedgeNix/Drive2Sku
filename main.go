@@ -34,6 +34,12 @@ type Payload struct {
 	UserToken   string
 }
 
+// VendorSettings holds vendor-specific quantity settings.
+type VendorSettings struct {
+	WeekendBuffer int
+	WeekdayBuffer int
+}
+
 const (
 	// throttle is SKUVault's throttle limit
 	// ten 100-object payloads every minute
@@ -76,6 +82,10 @@ var (
 	// file eventually to be deleted
 	//
 	delFCh = make(chan drive.File)
+
+	// settings is a mapping of a vendor name to its respective
+	// quantity buffer settings for weekends and weekdays.
+	settings = map[string]VendorSettings{}
 )
 
 // main is the entry point into the server program
@@ -88,6 +98,7 @@ var (
 //
 func main() {
 	initDriveAndVault()
+	readBufferSettings()
 
 	wg.Add(1)
 	go readDrive()
@@ -109,6 +120,16 @@ func main() {
 			echo("Finished relaying vendor JSONs")
 			return
 		}
+	}
+}
+
+// readBufferSettings pulls in vendor-specific quantity buffer
+// settings into a settings file for usage.
+
+func readBufferSettings() {
+	err := readJSON("buffers.json", settings)
+	if err != nil {
+		log.Fatalf("Unable to read vendor buffer settings: %v", err)
 	}
 }
 
@@ -191,7 +212,7 @@ func chunkToPayloads(f drive.File) {
 	// fmt.Println(`[[[ Decode JSON: PRE ]]]`)
 	json.NewDecoder(res.Body).Decode(&vsd)
 	// fmt.Println(`[[[ Decode JSON: POST ]]]`)
-	for _, v := range vsd {
+	for vendor, v := range vsd {
 		// fmt.Printf("%s:\n", k)
 
 		for _, iv := range v {
@@ -200,6 +221,16 @@ func chunkToPayloads(f drive.File) {
 			// i is the cursor
 
 			// fmt.Printf("\t%s:\n", ik)
+
+			if time.Weekday() == time.Friday {
+				if iv.Quantity <= settings[vendor].WeekendBuffer {
+					iv.Quantity = 0
+				}
+			} else {
+				if iv.Quantity <= settings[vendor].WeekdayBuffer {
+					iv.Quantity = 0
+				}
+			}
 
 			// payload is full
 			if len(pl.Items) == cap(pl.Items) {
