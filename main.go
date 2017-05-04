@@ -63,6 +63,10 @@ var (
 	//
 	plBufCh = make(chan Payload, 10)
 
+	// lastPlCh holds the file's last payload (for deletion)
+	//
+	lastPlCh = make(chan Payload)
+
 	// wg is a wait group that acts like an atomic reference
 	// counter but for goroutines and waits for them to all finish
 	//
@@ -96,7 +100,11 @@ func main() {
 	for {
 		select {
 		case <-throttleCh:
-			go writeVault(<-plBufCh)
+			if len(plBufCh) > 0 {
+				go writeVault(<-plBufCh)
+			} else {
+				go writeVault(<-lastPlCh)
+			}
 		case <-endCh:
 			echo("Finished relaying vendor JSONs")
 			return
@@ -177,6 +185,7 @@ func chunkToPayloads(f drive.File) {
 	// 100-item capacity payload
 	pl := Payload{make([]Item, 0, plCap), toks.TenantToken, toks.UserToken}
 
+	i := 0
 	// the entire JSON file structure
 	vsd := map[string]map[string]Item{}
 	// fmt.Println(`[[[ Decode JSON: PRE ]]]`)
@@ -186,7 +195,9 @@ func chunkToPayloads(f drive.File) {
 		// fmt.Printf("%s:\n", k)
 
 		for _, iv := range v {
+			i++
 			// this is one payload item
+			// i is the cursor
 
 			// fmt.Printf("\t%s:\n", ik)
 
@@ -194,7 +205,12 @@ func chunkToPayloads(f drive.File) {
 			if len(pl.Items) == cap(pl.Items) {
 				// forward payload into buffered channel
 				wg.Add(1)
-				plBufCh <- pl
+				// this is the last one
+				if i == len(v) {
+					plBufCh <- pl
+				} else {
+					lastPlCh <- pl
+				}
 				// reset payload
 				pl = Payload{make([]Item, 0, plCap), pl.TenantToken, pl.UserToken}
 			}
@@ -212,7 +228,7 @@ func chunkToPayloads(f drive.File) {
 		if len(pl.Items) != 0 {
 			// forward payload into buffered channel
 			wg.Add(1)
-			plBufCh <- pl
+			lastPlCh <- pl
 		}
 	}
 
@@ -246,6 +262,9 @@ func writeVault(pl Payload) {
 	res, err := vaultRequest(`inventory/setItemQuantities`, struct2JSON(pl))
 	if err != nil {
 		log.Fatalf(`Unable to set item quantities in SKUVault: %v`, err)
+
+		// plug back
+		plBufCh <- pl
 	}
 	defer res.Body.Close()
 
