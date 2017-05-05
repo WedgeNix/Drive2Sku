@@ -130,6 +130,7 @@ func main() {
 	}
 }
 
+// initChannels initializes all channels for the package.
 func initChannels() {
 	endCh = make(chan bool)
 	plBufCh = make(chan Payload, 10)
