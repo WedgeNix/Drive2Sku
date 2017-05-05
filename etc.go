@@ -252,7 +252,10 @@ func responseStatus(res *http.Response) string {
 	body := ResponseBody{}
 	json.NewDecoder(res.Body).Decode(&body)
 	defer res.Body.Close()
-	return strings.Join(body.Errors[0].ErrorMessages[:], `, `)
+	for _, err := range body.Errors {
+		return strings.Join(err.ErrorMessages[:], `, `)
+	}
+	return ""
 }
 
 // echo center-formats messages in a specific style,
