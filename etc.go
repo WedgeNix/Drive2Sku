@@ -20,7 +20,6 @@ import (
 
 // getClientAndSkuTokens uses a Context and Config to retrieve a Token
 // then generate a Client. It returns the generated Client.
-//
 func getClientAndSkuTokens(ctx context.Context, config *oauth2.Config) (*drive.Service, *SkuTokens) {
 	cacheDriveFile, cacheSkuFile, err := tokenCacheFiles()
 	if err != nil {
@@ -51,7 +50,6 @@ func getClientAndSkuTokens(ctx context.Context, config *oauth2.Config) (*drive.S
 
 // getOTokenFromWeb uses Config to request a Token.
 // It returns the retrieved Token.
-//
 func getOTokenFromWeb(config *oauth2.Config) *oauth2.Token {
 	authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
 	fmt.Printf("Go to the following link in your browser then type the "+
@@ -71,7 +69,6 @@ func getOTokenFromWeb(config *oauth2.Config) *oauth2.Token {
 
 // tokenCacheFiles generates credential file path/filename.
 // It returns the generated credential path/filename.
-//
 func tokenCacheFiles() (string, string, error) {
 	usr, err := user.Current()
 	if err != nil {
@@ -87,7 +84,6 @@ func tokenCacheFiles() (string, string, error) {
 
 // oTokenFromFile retrieves a Token from a given file path.
 // It returns the retrieved Token and any read error encountered.
-//
 func oTokenFromFile(file string) (*oauth2.Token, error) {
 	f, err := os.Open(file)
 	if err != nil {
@@ -107,7 +103,6 @@ type SkuTokens struct {
 
 // tokensFromFile retrieves a Token from a given file path.
 // It returns the retrieved Token and any read error encountered.
-//
 func tokensFromFile(file string) (*SkuTokens, error) {
 	f, err := os.Open(file)
 	if err != nil {
@@ -121,7 +116,6 @@ func tokensFromFile(file string) (*SkuTokens, error) {
 
 // saveOToken uses a file path to create a file and store the
 // token in it.
-//
 func saveOToken(file string, token *oauth2.Token) {
 	fmt.Printf("Saving Drive credential file to: %s\n", file)
 	f, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
@@ -134,7 +128,6 @@ func saveOToken(file string, token *oauth2.Token) {
 
 // saveTokens uses a file path to create a file and store the
 // token in it.
-//
 func saveTokens(file string, toks *SkuTokens) {
 	fmt.Printf("Saving SkuVault credential file to: %s\n", file)
 	f, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
@@ -158,7 +151,6 @@ func readJSON(name string, v interface{}) error {
 
 // struct2JSON converts a data structure
 // in type format into a JSON-reader
-//
 func struct2JSON(v interface{}) *strings.Reader {
 	// convert interface to JSON bytes
 	b, err := json.Marshal(v)
@@ -172,7 +164,6 @@ func struct2JSON(v interface{}) *strings.Reader {
 
 // vaultRequest asks SKUVault of the passed in function,
 // supplying a reader on a JSON string
-//
 func vaultRequest(fn string, jsn *strings.Reader) (*http.Response, error) {
 	// get official POST request from SKUVault
 	req, err := http.NewRequest("POST", "https://app.skuvault.com/api/"+fn, jsn)
@@ -189,7 +180,6 @@ func vaultRequest(fn string, jsn *strings.Reader) (*http.Response, error) {
 
 // getSkuCredentials gets the tokens needed for SKU vault
 // api calls.
-//
 func getTokensFromWeb() *SkuTokens {
 	//  Asking for email for SKU Vault account
 	// fmt.Printf("SKU Vault email and password: ")
