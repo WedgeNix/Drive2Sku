@@ -15,7 +15,7 @@ import (
 	"google.golang.org/api/drive/v3"
 )
 
-// Item represents the inner, important information for each sku object
+// Iem represents the inner, important information for each sku object
 // this exists in the JSON structure
 //
 type Item struct {
