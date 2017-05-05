@@ -74,13 +74,13 @@ var (
 	// endCh signifies the end of the program
 	// it is done processing everything once the last
 	// value is passed through it
-	endCh = make(chan bool)
+	endCh chan bool
 
 	// plBufCh holds a maximum of 10 payloads stored concurrently
-	plBufCh = make(chan Payload, 10)
+	plBufCh chan Payload
 
 	// lastPlCh holds the file's last payload (for deletion)
-	lastPlCh = make(chan Payload)
+	lastPlCh chan Payload
 
 	// wg is a wait group that acts like an atomic reference
 	// counter but for goroutines and waits for them to all finish
@@ -88,11 +88,11 @@ var (
 
 	// delFCh is a file channel that holds a potential
 	// file eventually to be deleted
-	delFCh = make(chan drive.File)
+	delFCh chan drive.File
 
 	// settings is a mapping of a vendor name to its respective
 	// quantity buffer settings for weekends and weekdays.
-	settings = map[string]VendorSettings{}
+	settings map[string]VendorSettings
 )
 
 // main is the entry point into the server program
@@ -104,6 +104,7 @@ var (
 // in a smart and practical manner.
 func main() {
 	initDriveAndVault()
+	initChannels()
 	readBufferSettings()
 
 	wg.Add(1)
@@ -129,9 +130,17 @@ func main() {
 	}
 }
 
+func initChannels() {
+	endCh = make(chan bool)
+	plBufCh = make(chan Payload, 10)
+	lastPlCh = make(chan Payload)
+	delFCh = make(chan drive.File)
+}
+
 // readBufferSettings pulls in vendor-specific quantity buffer
 // settings into a settings file for usage.
 func readBufferSettings() {
+	settings = map[string]VendorSettings{}
 	err := readJSON("buffers.json", settings)
 	if err != nil {
 		log.Fatalf("Unable to read vendor buffer settings: %v", err)
