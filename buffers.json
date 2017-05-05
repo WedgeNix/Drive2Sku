@@ -1,0 +1,58 @@
+{
+    "Famous": {
+        "WeekdayBuffer": 5,
+        "WeekendBuffer": 5
+    },
+    "Metal Mulisha": {
+        "WeekdayBuffer": 4,
+        "WeekendBuffer": 6
+    },
+    "FMF": {
+        "WeekdayBuffer": 5,
+        "WeekendBuffer": 5
+    },
+    "O'neill": {
+        "WeekdayBuffer": 5,
+        "WeekendBuffer": 5
+    },
+    "Von Dutch": {
+        "WeekdayBuffer": 5,
+        "WeekendBuffer": 5
+    },
+    "Troy Lee Designs": {
+        "WeekdayBuffer": 5,
+        "WeekendBuffer": 5
+    },
+    "Alpinestars": {
+        "WeekdayBuffer": 5,
+        "WeekendBuffer": 5
+    },
+    "My Pakage": {
+        "WeekdayBuffer": 3,
+        "WeekendBuffer": 5
+    },
+    "Fox Racing": {
+        "WeekdayBuffer": 5,
+        "WeekendBuffer": 5
+    },
+    "PSD": {
+        "WeekdayBuffer": 5,
+        "WeekendBuffer": 5
+    },
+    "American Fighter": {
+        "WeekdayBuffer": 12,
+        "WeekendBuffer": 15
+    },
+    "Ben Sherman": {
+        "WeekdayBuffer": 12,
+        "WeekendBuffer": 15
+    },
+    "Junk Underjeans": {
+        "WeekdayBuffer": 5,
+        "WeekendBuffer": 5
+    },
+    "LRG": {
+        "WeekdayBuffer": 5,
+        "WeekendBuffer": 5
+    }
+}
