@@ -145,6 +145,17 @@ func saveTokens(file string, toks *SkuTokens) {
 	json.NewEncoder(f).Encode(toks)
 }
 
+// readJSON, using a file name and a structure,
+// populates it with an existing JSON file.
+func readJSON(name string, v interface{}) error {
+	f, err := os.Open(name)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return json.NewDecoder(f).Decode(v)
+}
+
 // struct2JSON converts a data structure
 // in type format into a JSON-reader
 //
