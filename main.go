@@ -38,6 +38,23 @@ type VendorSettings struct {
 	WeekdayBuffer int
 }
 
+// ErrorBody matches the structure of
+// the SKUVault response body for an error.
+type ErrorBody struct {
+	Sku           string
+	Code          int
+	LocationCode  string
+	WarehouseID   int
+	ErrorMessages []string
+}
+
+// ResponseBody matches the structure of
+// the SKUVault general response body.
+type ResponseBody struct {
+	Status string
+	Errors []ErrorBody
+}
+
 const (
 	// throttle is SKUVault's throttle limit
 	// ten 100-object payloads every minute
@@ -309,21 +326,4 @@ func writeVault(pl Payload) {
 		deleteFile(f)
 	default: // ignore if not ready
 	}
-}
-
-// ErrorBody matches the structure of
-// the SKUVault response body for an error
-type ErrorBody struct {
-	Sku           string
-	Code          int
-	LocationCode  string
-	WarehouseID   int
-	ErrorMessages []string
-}
-
-// ResponseBody matches the structure of
-// the SKUVault general response body
-type ResponseBody struct {
-	Status string
-	Errors []ErrorBody
 }
