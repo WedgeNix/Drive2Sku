@@ -258,11 +258,13 @@ func responseStatus(res *http.Response) string {
 // echo center-formats messages in a specific style,
 // only for the console though.
 func echo(s string) {
-	L := `[[[`
-	R := `]]]`
+	L := "-:::"
+	R := ":::-"
 	IP := 120 - len(L) - len(R)
 	LP := IP/2 - len(s)/2
 	RP := IP - len(s) - LP
+	LS := strings.Repeat(".", LP)
+	RS := strings.Repeat(".", RP)
 
-	fmt.Printf("%s%*s%s%*s%s\n", L, LP, ``, s, RP, ``, R)
+	fmt.Printf("%s%s%s%s%s\n", L, LS, s, RS, R)
 }
