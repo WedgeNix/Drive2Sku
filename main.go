@@ -142,7 +142,7 @@ func initChannels() {
 // settings into a settings file for usage.
 func readBufferSettings() {
 	settings = map[string]VendorSettings{}
-	err := readJSON("buffers.json", settings)
+	err := readJSON("buffers.json", &settings)
 	if err != nil {
 		log.Fatalf("Unable to read vendor buffer settings: %v", err)
 	}
@@ -222,18 +222,12 @@ func chunkToPayloads(f drive.File) {
 	i := 0
 	// the entire JSON file structure
 	vsd := map[string]map[string]Item{}
-	// fmt.Println(`[[[ Decode JSON: PRE ]]]`)
 	json.NewDecoder(res.Body).Decode(&vsd)
-	// fmt.Println(`[[[ Decode JSON: POST ]]]`)
 	for vendor, v := range vsd {
-		// fmt.Printf("%s:\n", k)
-
 		for _, iv := range v {
 			i++
 			// this is one payload item
 			// i is the cursor
-
-			// fmt.Printf("\t%s:\n", ik)
 
 			switch t.Weekday() {
 			case time.Friday:
