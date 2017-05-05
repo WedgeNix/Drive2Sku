@@ -17,7 +17,6 @@ import (
 
 // Iem represents the inner, important information for each sku object
 // this exists in the JSON structure
-//
 type Item struct {
 	LocationCode string
 	Quantity     int
@@ -27,7 +26,6 @@ type Item struct {
 
 // Payload represents the final payload structure sent off
 // to SKUVault, given at most 100 objects
-//
 type Payload struct {
 	Items       []Item
 	TenantToken string
@@ -44,43 +42,35 @@ const (
 	// throttle is SKUVault's throttle limit
 	// ten 100-object payloads every minute
 	// every 6300 milliseconds, a post is made
-	//
 	throttle = 6300
 )
 
 var (
 	// drv is the Google Drive service
 	// it references the account after connecting
-	//
 	drv *drive.Service
 
 	// toks is the SKUVault connection tokens and client
 	// it allows use of tenant and user tokens for POST calls
-	//
 	toks *SkuTokens
 
 	// endCh signifies the end of the program
 	// it is done processing everything once the last
 	// value is passed through it
-	//
 	endCh = make(chan bool)
 
 	// plBufCh holds a maximum of 10 payloads stored concurrently
-	//
 	plBufCh = make(chan Payload, 10)
 
 	// lastPlCh holds the file's last payload (for deletion)
-	//
 	lastPlCh = make(chan Payload)
 
 	// wg is a wait group that acts like an atomic reference
 	// counter but for goroutines and waits for them to all finish
-	//
 	wg sync.WaitGroup
 
 	// delFCh is a file channel that holds a potential
 	// file eventually to be deleted
-	//
 	delFCh = make(chan drive.File)
 
 	// settings is a mapping of a vendor name to its respective
@@ -95,7 +85,6 @@ var (
 // It loops, controlling the flow, timing, and efficiency
 // of the server program so it runs on schedule
 // in a smart and practical manner
-//
 func main() {
 	initDriveAndVault()
 	readBufferSettings()
@@ -125,7 +114,6 @@ func main() {
 
 // readBufferSettings pulls in vendor-specific quantity buffer
 // settings into a settings file for usage.
-
 func readBufferSettings() {
 	err := readJSON("buffers.json", settings)
 	if err != nil {
@@ -136,7 +124,6 @@ func readBufferSettings() {
 // proctor is a blocking check to see when
 // all goroutines have been released from
 // the wait group
-//
 func proctor() {
 	wg.Wait()
 	endCh <- true
@@ -144,7 +131,6 @@ func proctor() {
 
 // init creates an instance of the engine's collective data
 // it sets up the dialog between this server and the drive folder
-//
 func initDriveAndVault() {
 	b, err := ioutil.ReadFile("client_secret.json")
 	if err != nil {
@@ -165,7 +151,6 @@ func initDriveAndVault() {
 // readPendingVendors actually reads the drive account's
 // pending vendors folder and grabs any and all
 // files, downloads them, and deletes them
-//
 func readDrive() {
 	defer wg.Done()
 
@@ -190,9 +175,10 @@ func readDrive() {
 
 // chunkToPayloads downloads a file
 // fitting it into 100-chuck payloads
-//
 func chunkToPayloads(f drive.File) {
 	// defer wg.Done()
+
+	t := time.Now()
 
 	// grabs http request for one of the json files
 	res, err := drv.Files.Get(f.Id).Download()
@@ -222,11 +208,16 @@ func chunkToPayloads(f drive.File) {
 
 			// fmt.Printf("\t%s:\n", ik)
 
-			if time.Weekday() == time.Friday {
+			switch t.Weekday() {
+			case time.Friday:
+				fallthrough
+			case time.Saturday:
+				fallthrough
+			case time.Sunday:
 				if iv.Quantity <= settings[vendor].WeekendBuffer {
 					iv.Quantity = 0
 				}
-			} else {
+			default:
 				if iv.Quantity <= settings[vendor].WeekdayBuffer {
 					iv.Quantity = 0
 				}
@@ -274,7 +265,6 @@ func chunkToPayloads(f drive.File) {
 // deleteFile takes in a drive file
 // and actually deletes it from the
 // Drive account
-//
 func deleteFile(f drive.File) {
 	echo(fmt.Sprintf(`Deleting file "%s" (%s)`, f.Name, f.Id))
 
@@ -286,7 +276,6 @@ func deleteFile(f drive.File) {
 
 // writeVault writes the intercepted json files out
 // to SKUVault via its REST api
-//
 func writeVault(pl Payload) {
 	defer wg.Done()
 
@@ -324,7 +313,6 @@ func writeVault(pl Payload) {
 
 // ErrorBody matches the structure of
 // the SKUVault response body for an error
-//
 type ErrorBody struct {
 	Sku           string
 	Code          int
@@ -335,7 +323,6 @@ type ErrorBody struct {
 
 // ResponseBody matches the structure of
 // the SKUVault general response body
-//
 type ResponseBody struct {
 	Status string
 	Errors []ErrorBody
