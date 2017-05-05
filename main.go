@@ -16,7 +16,7 @@ import (
 )
 
 // Item represents the inner, important information for each sku object
-// this exists in the JSON structure
+// this exists in the JSON structure.
 type Item struct {
 	LocationCode string
 	Quantity     int
