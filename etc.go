@@ -258,8 +258,8 @@ func responseStatus(res *http.Response) string {
 // echo center-formats messages in a specific style,
 // only for the console though.
 func echo(s string) {
-	L := "-:::"
-	R := ":::-"
+	L := "[:::"
+	R := ":::]"
 	IP := 120 - len(L) - len(R)
 	LP := IP/2 - len(s)/2
 	RP := IP - len(s) - LP
