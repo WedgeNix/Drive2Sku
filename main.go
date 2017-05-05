@@ -84,7 +84,7 @@ var (
 // format out to SKUVault.
 // It loops, controlling the flow, timing, and efficiency
 // of the server program so it runs on schedule
-// in a smart and practical manner
+// in a smart and practical manner.
 func main() {
 	initDriveAndVault()
 	readBufferSettings()
@@ -123,14 +123,14 @@ func readBufferSettings() {
 
 // proctor is a blocking check to see when
 // all goroutines have been released from
-// the wait group
+// the wait group.
 func proctor() {
 	wg.Wait()
 	endCh <- true
 }
 
 // init creates an instance of the engine's collective data
-// it sets up the dialog between this server and the drive folder
+// it sets up the dialog between this server and the drive folder.
 func initDriveAndVault() {
 	b, err := ioutil.ReadFile("client_secret.json")
 	if err != nil {
@@ -150,7 +150,7 @@ func initDriveAndVault() {
 
 // readPendingVendors actually reads the drive account's
 // pending vendors folder and grabs any and all
-// files, downloads them, and deletes them
+// files, downloads them, and deletes them.
 func readDrive() {
 	defer wg.Done()
 
@@ -174,7 +174,7 @@ func readDrive() {
 }
 
 // chunkToPayloads downloads a file
-// fitting it into 100-chuck payloads
+// fitting it into 100-chuck payloads.
 func chunkToPayloads(f drive.File) {
 	// defer wg.Done()
 
@@ -264,7 +264,7 @@ func chunkToPayloads(f drive.File) {
 
 // deleteFile takes in a drive file
 // and actually deletes it from the
-// Drive account
+// Drive account.
 func deleteFile(f drive.File) {
 	echo(fmt.Sprintf(`Deleting file "%s" (%s)`, f.Name, f.Id))
 
@@ -275,7 +275,7 @@ func deleteFile(f drive.File) {
 }
 
 // writeVault writes the intercepted json files out
-// to SKUVault via its REST api
+// to SKUVault via its REST api.
 func writeVault(pl Payload) {
 	defer wg.Done()
 

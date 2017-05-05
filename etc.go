@@ -247,6 +247,7 @@ func printResponse(res *http.Response) {
 	fmt.Println(string(b))
 }
 
+// responseStatus
 func responseStatus(res *http.Response) string {
 	body := ResponseBody{}
 	json.NewDecoder(res.Body).Decode(&body)
@@ -254,6 +255,8 @@ func responseStatus(res *http.Response) string {
 	return strings.Join(body.Errors[0].ErrorMessages[:], `, `)
 }
 
+// echo center-formats messages in a specific style,
+// only for the console though.
 func echo(s string) {
 	L := `[[[`
 	R := `]]]`
