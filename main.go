@@ -103,6 +103,7 @@ var (
 // of the server program so it runs on schedule
 // in a smart and practical manner.
 func main() {
+	defer timeTrack(time.Now())
 	initDriveAndVault()
 	initChannels()
 	readBufferSettings()
@@ -128,6 +129,12 @@ func main() {
 			return
 		}
 	}
+}
+
+// timeTrack tracks time spent executing main func
+func timeTrack(start time.Time) {
+	elapsed := time.Since(start)
+	echo(fmt.Sprintf("Drive2Sku took %v seconds.", elapsed.Seconds()))
 }
 
 // initChannels initializes all channels for the package.
