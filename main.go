@@ -131,12 +131,6 @@ func main() {
 	}
 }
 
-// timeTrack tracks time spent executing main func
-func timeTrack(start time.Time) {
-	elapsed := time.Since(start)
-	echo(fmt.Sprintf("Drive2Sku took %v seconds.", elapsed.Seconds()))
-}
-
 // initChannels initializes all channels for the package.
 func initChannels() {
 	endCh = make(chan bool)
@@ -337,4 +331,7 @@ func writeVault(pl Payload) {
 		deleteFile(f)
 	default: // ignore if not ready
 	}
+}
+func test() {
+
 }
