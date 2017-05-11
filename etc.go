@@ -11,6 +11,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"google.golang.org/api/drive/v3"
 
@@ -270,4 +271,11 @@ func echo(s string) {
 	RS := strings.Repeat(".", RP)
 
 	fmt.Printf("%s%s%s%s%s\n", L, LS, s, RS, R)
+}
+
+// timeTrack tracks time spent executing any func
+// this is to better understand how long a run will be.
+func timeTrack(start time.Time) {
+	elapsed := time.Since(start)
+	echo(fmt.Sprintf("Drive2Sku took %v seconds.", time.Duration(elapsed)))
 }

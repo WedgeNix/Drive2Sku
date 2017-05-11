@@ -103,6 +103,7 @@ var (
 // of the server program so it runs on schedule
 // in a smart and practical manner.
 func main() {
+	defer timeTrack(time.Now())
 	initDriveAndVault()
 	initChannels()
 	readBufferSettings()
@@ -330,4 +331,7 @@ func writeVault(pl Payload) {
 		deleteFile(f)
 	default: // ignore if not ready
 	}
+}
+func test() {
+
 }
