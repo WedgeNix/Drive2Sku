@@ -54,5 +54,9 @@
     "LRG": {
         "WeekdayBuffer": 5,
         "WeekendBuffer": 5
+    },
+    "DVS": {
+        "WeekdayBuffer": 5,
+        "WeekendBuffer": 5
     }
 }
